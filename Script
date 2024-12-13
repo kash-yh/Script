@@ -1,231 +1,148 @@
-local FistCombat = {}
-FistCombat.__index = FistCombat
-
-local RF = game:GetService("ReplicatedFirst")
 local RS = game:GetService("ReplicatedStorage")
-local TS = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
 
-local ActionService = RS.Remotes.ActionService
-local ReplicateRemote = RS.Remotes.Replicate
+local Player = game:GetService("Players").LocalPlayer
+local Camera = workspace.CurrentCamera
+local GUI = Player.PlayerGui:WaitForChild("CombatGui")
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid
+local Backpack = Player.Backpack
 
-local Auxillary = require(RS.Modules.Auxillary.Auxillary)
+local CharacterConnections = {}
 
-local Assets = RF.Assets.FistCombat
-local VFX = Assets.VFX
-local Sound = Assets.Sound
-local Animations = Assets.Animations
+-- ReplicatedRemote
+local ReplicatedRemote = RS.Remotes.Replicate
 
-local PunchTextures = {
-    "rbxassetid://10456132644",
-    "rbxassetid://10456131908",
-    "rbxassetid://10456131470",
-    "rbxassetid://10456131062",
-    "rbxassetid://10456130711",
-    "rbxassetid://10458644568",
+-- CameraShaker
+local function ShakeCamera(ShakeCFrame)
+	Camera.CFrame = Camera.CFrame * ShakeCFrame
+end
+
+local CameraShaker = require(RS.Modules.Auxillary.CameraShaker).new(Enum.RenderPriority.Camera.Value, ShakeCamera)
+CameraShaker:Start()
+
+-- Cooldown Manager
+local CooldownManager = require(RS.Modules.Auxillary.CooldownManager).new(Player, GUI)
+
+-- Status Manager
+local StatusFolder = Character:WaitForChild("StatusFolder")
+local StatusManager = require(RS.Modules.Auxillary.StatusManager).new(Player)
+
+local AuxObjects = {
+	["CameraShaker"] = CameraShaker,
+	["CooldownManager"] = CooldownManager,
+	["StatusManager"] = StatusManager,
 }
 
-local COMBOLENGTH = 5
-local COMBORESETLENGTH = 1
-local ITEMNAME = "FistCombat"
+-- Default current weapon to fist
+local BaseCombat = require(RS.Modules.Items.FistCombat).new(Player, AuxObjects)
+local CurrentItem = BaseCombat
+CurrentItem:Equip()
 
-function FistCombat.new(User, AuxObjects)
-    local self = setmetatable({}, FistCombat)
-    
-    self.User = User
-    self.Mouse = User:GetMouse()
-    self.CooldownManager = AuxObjects.CooldownManager
-    self.CameraShaker = AuxObjects.CameraShaker
-    self.StatusManager = AuxObjects.StatusManager
-    self.Character = User.Character
-    
-    self.Locked = false
-    self.Equipped = false
-    
-    self.Status = {
-        ["Combo"] = 1,
-        ["LastCombo"] = 0,
-        ["Blocking"] = false,
-        ["Action"] = false, 
-    }
-    
-    self.Keys = {
-        ["M1"] = {["Name"] = "Punch", ["LayoutOrder"] = 1},
-        ["M2"] = {["Name"] = "Heavy", ["LayoutOrder"] = 2},
-        ["F"] = {["Name"] = "Block", ["LayoutOrder"] = 3},
-    }
-    
-    self.Animations = {}
-    
-    self.CooldownManager:AddItem("FistCombat", self.Keys)
-    
-    return self
+function HandleInputs(UserInput, GPE)
+	if GPE then return end
+	-- Convert UserInput into a String for ease of use
+	local InputName = tostring(UserInput.KeyCode)
+	if InputName == "Unknown" then
+		InputName = UserInput.UserInputType.Name
+	end
+	if UserInput.UserInputType == Enum.UserInputType.MouseButton1 then
+		InputName = "M1"
+	elseif UserInput.UserInputType == Enum.UserInputType.MouseButton2 then
+		InputName = "M2"
+	end
+	-- Handle the input here (currently no specific action for M1/M2)
 end
 
-function FistCombat:Equip()
-    -- Equip the item and load cooldown UI
-    self.CooldownManager:LoadItem("FistCombat")
-    self.Equipped = true
+UIS.InputBegan:Connect(HandleInputs)
+UIS.InputEnded:Connect(HandleInputs)
+
+-- Super Simple Replicator
+local Modules = {}
+for i, Item in pairs(RS.Modules.Items:GetChildren()) do
+	Modules[Item.Name] = require(Item)
 end
 
-function FistCombat:M1()
-    -- Check Cooldown and other requirements
-    if 
-        not self.CooldownManager:OnCooldown(ITEMNAME, "Punch") 
-        and self.Equipped
-        and not self.Locked
-        and not self.Status.Blocking
-        and not self.Status.Action
-        and not self.StatusManager.Stun
-        and not self.CooldownManager.InAction
-    then
-        self.CooldownManager:SetAction(true)
-        self.Status.Action = true
-        
-        if time() - self.Status.LastCombo > COMBORESETLENGTH then
-            self.Status.Combo = 1
-        end
-        
-        self.Status.LastCombo = time()
-        
-        local Cooldown = .3
-        if self.Status.Combo == 5 then
-            Cooldown = 1
-        end
-        
-        self.CooldownManager:AddCooldown(ITEMNAME, "Punch", Cooldown)
-        
-        self.Character.Humanoid.WalkSpeed = 4
-        
-        -- Move the player
-        local BV = Instance.new("BodyVelocity")
-        BV.MaxForce = Vector3.new(999999, 0, 999999)
-        BV.Velocity = self.Character.HumanoidRootPart.CFrame.LookVector * 25
-        BV.Parent = self.Character.HumanoidRootPart
-        
-        task.delay(.1, function()
-            BV:Destroy()  -- Fixed Destroy usage
-        end)
-        
-        -- Play the animation
-        local Animation = self.Character.Humanoid.Animator:LoadAnimation(Animations["M"..self.Status.Combo])
-        Animation:Play()
-        
-        -- Create the effect
-        local ReplicatedArgs = {
-            Module = "FistCombat",
-            Action = "PunchEffect",
-            Character = self.Character,
-            Combo = self.Status.Combo,
-        }
-        FistCombat.PunchEffect(ReplicatedArgs)
-        ReplicateRemote:FireServer(ReplicatedArgs)
-        
-        -- Camera Shake
-        self.CameraShaker:ShakeOnce(2, 4, .2, .3)
-        
-        -- Hitboxing
-        local Params = OverlapParams.new()
-        Params.FilterType = Enum.RaycastFilterType.Exclude
-        Params.FilterDescendantsInstances = {workspace.Map, workspace.FX, self.Character}
-        
-        local HitList = {}
-        local HB = workspace:GetPartBoundsInBox(self.Character:GetPivot() * CFrame.new(0, 0, -4), Vector3.new(4, 4, 6), Params)
-    
-        for i, Part in pairs(HB) do
-            if Part.Parent:FindFirstChild("Humanoid") and table.find(HitList, Part.Parent) == nil then
-                table.insert(HitList, Part.Parent)
-                
-                local Highlight = Instance.new("Highlight", Part.Parent)
-                Highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-                Highlight.FillColor = Color3.fromRGB(195, 0, 0)
-                Highlight.FillTransparency = 0
-                Highlight.OutlineTransparency = 1
-                TS:Create(Highlight, TweenInfo.new(.4), {FillTransparency = 1}):Play()
-                
-                task.delay(.4, function()
-                    Highlight:Destroy()
-                end)
-                
-                local ReplicateArgs = {
-                    Module = "FistCombat",
-                    Action = "HitEffect",
-                    Target = Part.Parent,
-                    Combo = self.Status.Combo,
-                }
-                FistCombat.HitEffect(ReplicatedArgs)
-                ReplicateRemote:FireServer(ReplicateArgs)
-                
-                if self.Status.Combo == 5 then
-                    local ReplicateArgs = {
-                        Module = "FistCombat",
-                        Action = "HeavyHitEffect",
-                        Target = Part.Parent,
-                        Character = self.Character,
-                    }
-                    FistCombat.HeavyHitEffect(ReplicateArgs)
-                    ReplicateRemote:FireServer(ReplicateArgs)
-                end
-            end
-        end
-        
-        -- Fire to server
-        local ServerArgs = {
-            ["Module"] = "FistCombat",
-            ["Action"] = "Hit",
-            ["HitList"] = HitList,
-            ["Knockback"] = self.Character.HumanoidRootPart.CFrame.LookVector * 25,
-            ["Combo"] = self.Status.Combo,
-        }
-        
-        if self.Status.Combo == 5 then
-            ServerArgs.Knockback += 3
-        end
-        
-        ActionService:InvokeServer(ServerArgs)
-            
-        if self.Status.Combo == COMBOLENGTH then
-            self.Status.Combo = 0
-        end
-        self.Status.Combo += 1
-        
-        task.wait(.3)
-        self.Character.Humanoid.WalkSpeed = 16
-        self.Status.Action = false
-        self.CooldownManager:SetAction(false)
-    end
+ReplicatedRemote.OnClientEvent:Connect(function(Args)
+	Modules[Args.Module][Args.Action](Args)
+end)
+
+----------------------------------------------------------------
+-- Inventory System
+
+-- Connections
+local BackpackConnections = {}
+local BackpackCoreConnections = {}
+
+function AddItem(Tool)
+	if Tool:IsA("Tool") and not BackpackConnections[Tool] then
+		BackpackConnections[Tool] = {}
+		BackpackConnections[Tool].Module = require(RS.Modules.Items[Tool.Name]).new(Player, AuxObjects)
+		BackpackConnections[Tool].Equipped = Tool.Equipped:Connect(function()
+			CurrentItem:Unequip()
+			CurrentItem = BackpackConnections[Tool].Module
+			CurrentItem:Equip()
+		end)
+		
+		BackpackConnections[Tool].Unequipped = Tool.Unequipped:Connect(function()
+			if Character:FindFirstChildWhichIsA("Tool") == nil then
+				CurrentItem:Unequip()
+				CurrentItem = BaseCombat
+				CurrentItem:Equip()
+			end
+		end)
+	end
 end
 
-function FistCombat.HitEffect(Args)
-    local Target = Args.Target
-    local Attachment = Instance.new("Attachment", Target.HumanoidRootPart)
-    Attachment.Name = "HitEffect"
-    
-    if Target:GetAttribute("Blocking") then
-        if Args.Combo == 5 then
-            for i, ptc1 in pairs(VFX.BlockBreak:GetChildren()) do
-                ptc1:Clone().Parent = Attachment
-            end
-        else
-            for i, ptc1 in pairs(VFX.Block:GetChildren()) do
-                ptc1:Clone().Parent = Attachment
-            end
-        end
-    else
-        for i, ptc1 in pairs(VFX.Hit:GetChildren()) do
-            ptc1:Clone().Parent = Attachment
-        end
-    end
-    
-    Auxillary.Emit(Attachment)
-    task.delay(1, function()  -- Fixed typo in delay
-        Attachment:Destroy()
-    end)
+for i, OtherPlayer in pairs(game:GetService("Players"):GetPlayers()) do
+	if OtherPlayer ~= Player then
+		if OtherPlayer.Character:FindFirstChildWhichIsA("Tool") then
+			Modules[OtherPlayer.Character:FindFirstChildWhichIsA("Tool").Name].CreateModel({Character = OtherPlayer.Character})
+		end
+	end
 end
 
-function FistCombat.HeavyHitEffect(Args)
-    local Character = Args.Character
-    local Target = Args.Target
-    local Direction = Character.HumanoidRootPart.CFrame.LookVector
-    
-    local HeavyEffect = VFX.Heavy:Clone()
-   
+function LoadCharacter(Char)
+	Character = Char
+	Humanoid = Char:WaitForChild("Humanoid")
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	
+	Backpack = Player.Backpack
+	BackpackConnections.ChildAdded = Backpack.ChildAdded:Connect(function(Tool)
+		if Tool:IsA("Tool") then
+			AddItem(Tool)
+		end
+	end)
+	
+	BackpackConnections.ChildRemoved = Backpack.ChildRemoved:Connect(function(Tool)
+		if Tool:IsA("Tool") then
+		    if Tool.Parent ~= Character then
+				BackpackConnections[Tool].Equipped:Disconnect()
+				BackpackConnections[Tool].Unequipped:Disconnect()
+				BackpackConnections[Tool].Module:Destroy()
+				BackpackConnections[Tool] = nil
+			end
+		end
+	end)
+	
+	for i, Tool in pairs(Backpack:GetChildren()) do
+		AddItem(Tool)
+	end
+		
+	CurrentItem = BaseCombat
+	CurrentItem:Equip()
+		
+	CharacterConnections["Died"] = Humanoid.Died:Connect(function()
+		BackpackCoreConnections.ChildAdded:Disconnect()
+		BackpackCoreConnections.ChildRemoved:Disconnect()
+		-- Make sure our character isn't attacking when dead
+		CurrentItem:Lock()
+	end)
+		
+	CurrentItem:UpdateCharacter()
+	CurrentItem:Unlock()
+end
+
+Player.CharacterAdded:Connect(LoadCharacter)
+LoadCharacter(Character)
