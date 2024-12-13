@@ -1,148 +1,106 @@
-local RS = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
+local CooldownManager = {}
+CooldownManager.__index = CooldownManager
 
-local Player = game:GetService("Players").LocalPlayer
-local Camera = workspace.CurrentCamera
-local GUI = Player.PlayerGui:WaitForChild("CombatGui")
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid
-local Backpack = Player.Backpack
+local RF = game:GetService("ReplicatedFirst")
+local TS = game:GetService("TweenService")
+local RS = game:GetService("RunService")
 
-local CharacterConnections = {}
+local Assets = RF.Assets.UI.Cooldown
 
--- ReplicatedRemote
-local ReplicatedRemote = RS.Remotes.Replicate
+function CooldownManager.new(User, GUI)
+    local self = setmetatable({}, CooldownManager)
+    self.GUI = GUI
+    self.CooldownList = {}
+    self.CurrentItem = nil
+    self.InAction = false
 
--- CameraShaker
-local function ShakeCamera(ShakeCFrame)
-	Camera.CFrame = Camera.CFrame * ShakeCFrame
+    return self
 end
 
-local CameraShaker = require(RS.Modules.Auxillary.CameraShaker).new(Enum.RenderPriority.Camera.Value, ShakeCamera)
-CameraShaker:Start()
-
--- Cooldown Manager
-local CooldownManager = require(RS.Modules.Auxillary.CooldownManager).new(Player, GUI)
-
--- Status Manager
-local StatusFolder = Character:WaitForChild("StatusFolder")
-local StatusManager = require(RS.Modules.Auxillary.StatusManager).new(Player)
-
-local AuxObjects = {
-	["CameraShaker"] = CameraShaker,
-	["CooldownManager"] = CooldownManager,
-	["StatusManager"] = StatusManager,
-}
-
--- Default current weapon to fist
-local BaseCombat = require(RS.Modules.Items.FistCombat).new(Player, AuxObjects)
-local CurrentItem = BaseCombat
-CurrentItem:Equip()
-
-function HandleInputs(UserInput, GPE)
-	if GPE then return end
-	-- Convert UserInput into a String for ease of use
-	local InputName = tostring(UserInput.KeyCode)
-	if InputName == "Unknown" then
-		InputName = UserInput.UserInputType.Name
-	end
-	if UserInput.UserInputType == Enum.UserInputType.MouseButton1 then
-		InputName = "M1"
-	elseif UserInput.UserInputType == Enum.UserInputType.MouseButton2 then
-		InputName = "M2"
-	end
-	-- Handle the input here (currently no specific action for M1/M2)
+function CooldownManager:AddCooldown(ItemName, Action, Length)
+    local Cooldown = self.CooldownList[ItemName][Action]
+    Cooldown.OnCooldown = true
+    Cooldown.StartTime = time()
+    Cooldown.Length = Length
+    
+    self.GUI.Main.Cooldowns[Action].BackgroundColor3 = Color3.fromRGB(144, 80, 80)
+    TS:Create(self.GUI.Main.Cooldowns[Action], TweenInfo.new(Length, Enum.EasingStyle.Linear), {BackgroundColor3 = Color3.fromRGB(144, 144, 144)}):Play()
+    Cooldown.Times = Cooldown.Times + 1
+    local CurrentTimes = Cooldown.Times
+    task.spawn(function()
+        local StartTime = Cooldown.StartTime
+        Cooldown.Con = RS.RenderStepped:Connect(function()
+            if time() - StartTime >= Length then
+                self.GUI.Main.Cooldowns[Action].Time.Text = "0".."s"
+                self.GUI.Main.Cooldowns[Action].Time.Text = ""
+                Cooldown.Con:Disconnect()
+                if Cooldown.Times == CurrentTimes then
+                    Cooldown.OnCooldown = false
+                end
+            else
+                self.GUI.Main.Cooldowns[Action].Time.Text = ""..(math.round((Length - (time() - StartTime)) * 10) / 10).."s"
+            end
+        end)
+    end)
 end
 
-UIS.InputBegan:Connect(HandleInputs)
-UIS.InputEnded:Connect(HandleInputs)
-
--- Super Simple Replicator
-local Modules = {}
-for i, Item in pairs(RS.Modules.Items:GetChildren()) do
-	Modules[Item.Name] = require(Item)
+function CooldownManager:AddItem(ItemName, Actions)
+    self.CooldownList[ItemName] = {}
+    for i, v in pairs(Actions) do
+        self.CooldownList[ItemName][v.Name] = {Times = 0, OnCooldown = false, Key = i}
+    end
 end
 
-ReplicatedRemote.OnClientEvent:Connect(function(Args)
-	Modules[Args.Module][Args.Action](Args)
-end)
-
-----------------------------------------------------------------
--- Inventory System
-
--- Connections
-local BackpackConnections = {}
-local BackpackCoreConnections = {}
-
-function AddItem(Tool)
-	if Tool:IsA("Tool") and not BackpackConnections[Tool] then
-		BackpackConnections[Tool] = {}
-		BackpackConnections[Tool].Module = require(RS.Modules.Items[Tool.Name]).new(Player, AuxObjects)
-		BackpackConnections[Tool].Equipped = Tool.Equipped:Connect(function()
-			CurrentItem:Unequip()
-			CurrentItem = BackpackConnections[Tool].Module
-			CurrentItem:Equip()
-		end)
-		
-		BackpackConnections[Tool].Unequipped = Tool.Unequipped:Connect(function()
-			if Character:FindFirstChildWhichIsA("Tool") == nil then
-				CurrentItem:Unequip()
-				CurrentItem = BaseCombat
-				CurrentItem:Equip()
-			end
-		end)
-	end
+function CooldownManager:OnCooldown(ItemName, Action)
+    return self.CooldownList[ItemName][Action].OnCooldown
 end
 
-for i, OtherPlayer in pairs(game:GetService("Players"):GetPlayers()) do
-	if OtherPlayer ~= Player then
-		if OtherPlayer.Character:FindFirstChildWhichIsA("Tool") then
-			Modules[OtherPlayer.Character:FindFirstChildWhichIsA("Tool").Name].CreateModel({Character = OtherPlayer.Character})
-		end
-	end
+function CooldownManager:LoadItem(ItemName)
+    if self.CurrentItem ~= nil then
+        for i, Cooldown in pairs(self.CooldownList[self.CurrentItem]) do
+            if Cooldown.Con then
+                Cooldown.Con:Disconnect()
+            end
+        end
+    end
+    
+    -- Clean up old UI elements
+    for i, v in pairs(self.GUI.Main.Cooldowns:GetChildren()) do
+        if v:IsA("GuiBase") then
+            v:Destroy()
+        end
+    end
+    
+    -- Load new item cooldown UI
+    self:UpdateCooldowns(ItemName)
 end
 
-function LoadCharacter(Char)
-	Character = Char
-	Humanoid = Char:WaitForChild("Humanoid")
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-	Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-	
-	Backpack = Player.Backpack
-	BackpackConnections.ChildAdded = Backpack.ChildAdded:Connect(function(Tool)
-		if Tool:IsA("Tool") then
-			AddItem(Tool)
-		end
-	end)
-	
-	BackpackConnections.ChildRemoved = Backpack.ChildRemoved:Connect(function(Tool)
-		if Tool:IsA("Tool") then
-		    if Tool.Parent ~= Character then
-				BackpackConnections[Tool].Equipped:Disconnect()
-				BackpackConnections[Tool].Unequipped:Disconnect()
-				BackpackConnections[Tool].Module:Destroy()
-				BackpackConnections[Tool] = nil
-			end
-		end
-	end)
-	
-	for i, Tool in pairs(Backpack:GetChildren()) do
-		AddItem(Tool)
-	end
-		
-	CurrentItem = BaseCombat
-	CurrentItem:Equip()
-		
-	CharacterConnections["Died"] = Humanoid.Died:Connect(function()
-		BackpackCoreConnections.ChildAdded:Disconnect()
-		BackpackCoreConnections.ChildRemoved:Disconnect()
-		-- Make sure our character isn't attacking when dead
-		CurrentItem:Lock()
-	end)
-		
-	CurrentItem:UpdateCharacter()
-	CurrentItem:Unlock()
+function CooldownManager:UpdateCooldowns(ItemName)
+    -- Make sure ItemName is passed into this function
+
+    -- Loop through all cooldowns for the current ItemName
+    for i, Cooldown in pairs(self.CooldownList[ItemName]) do
+        local UI = Assets.CooldownHolder:Clone()
+        UI.LayoutOrder = Cooldown.LayoutOrder
+        UI.Key.Text = Cooldown.Key
+        UI.Time.Text = ""
+        UI.ActionName.Text = i
+        UI.Name = i
+        UI.Parent = self.GUI.Main.Cooldowns
+        UI.BackgroundColor3 = Color3.fromRGB(144, 144, 144)
+
+        -- Check if StartTime exists and calculate cooldown
+        if Cooldown.StartTime then
+            if time() - Cooldown.StartTime < Cooldown.Length then
+                self:AddCooldown(ItemName, i, Cooldown.Length - (time() - Cooldown.StartTime))
+            else
+                Cooldown.OnCooldown = false
+            end
+        end
+    end
+
+    -- Set the current item after the loop
+    self.CurrentItem = ItemName
 end
 
-Player.CharacterAdded:Connect(LoadCharacter)
-LoadCharacter(Character)
+return CooldownManager
