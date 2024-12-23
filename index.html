@@ -46,9 +46,6 @@
     .button:hover {
       background-color: #45a049;
     }
-    .button + .button {
-      margin-top: 10px; /* Add space between buttons */
-    }
   </style>
 </head>
 <body>
@@ -58,8 +55,6 @@
     <input type="text" id="username" class="input-field" placeholder="Enter Username" required>
 
     <button id="sendKeyButton" class="button">Send Key to Webhook</button>
-    <!-- Another button to demonstrate spacing -->
-    <button id="anotherButton" class="button">Another Button</button>
   </div>
 
   <script>
@@ -96,7 +91,7 @@
       // Encrypt the username
       const encryptedKey = encryptUsername(username);
       const message = {
-        content: `Player: ${username}\nEncrypted Key: ${encryptedKey}`,
+        content: Player: ${username}\nEncrypted Key: ${encryptedKey},
         username: "Key Generator Bot",
         avatar_url: "https://i.imgur.com/AfFp7pu.png"
       };
