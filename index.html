@@ -67,7 +67,7 @@
       const sendKeyButton = document.getElementById('sendKeyButton');
       const usernameInput = document.getElementById('username');
       
-      // Check if the elements exist to prevent accessing undefined
+      // Ensure the elements exist to prevent accessing undefined
       if (!sendKeyButton || !usernameInput) {
         console.error("HTML elements not found. Ensure your IDs are correct.");
         return;
@@ -76,12 +76,12 @@
       // Define the webhook URL
       const webhookUrl = "https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a"; 
 
-      // Generate a hashed key (SHA256) based on the username
+      // Function to generate a key from the username (hashed using SHA256)
       function generateKey(username) {
         return CryptoJS.SHA256(username).toString(CryptoJS.enc.Base64); // Encrypt the username
       }
 
-      // Function to send the key to Discord webhook
+      // Function to send the key to the Discord webhook
       function sendKeyToWebhook() {
         let username = usernameInput.value.trim();
         
