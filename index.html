@@ -55,7 +55,7 @@
     <label for="username">Enter Your Username:</label>
     <input type="text" id="username" class="input-field" placeholder="Enter Username" required>
 
-    <button class="button" onclick="sendKeyToWebhook()">Send Key to Webhook</button>
+    <button id="sendKeyButton" class="button">Send Key to Webhook</button>
   </div>
 
   <script>
@@ -85,6 +85,10 @@
         avatar_url: "https://i.imgur.com/AfFp7pu.png"
       };
 
+      // Debugging: Check the generated key and message
+      console.log("Generated Key: ", key);
+      console.log("Message: ", message);
+
       // Send the POST request to Discord webhook
       fetch(webhookUrl, {
         method: 'POST',
@@ -93,17 +97,30 @@
         },
         body: JSON.stringify(message)
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to send data to Discord");
+        }
+        return response.json();
+      })
       .then(data => {
+        // Debugging: Log response from Discord
+        console.log("Response from Discord: ", data);
+
         // Change button text to indicate success
         document.querySelector('button').innerText = "Key Sent to Discord!";
       })
       .catch((error) => {
+        // Debugging: Log the error
+        console.error("Error:", error);
+
         // Change button text to indicate error
         document.querySelector('button').innerText = "Error Sending Key!";
-        console.error("Error:", error);
       });
     }
+
+    // Attach the click event to the button
+    document.getElementById("sendKeyButton").addEventListener("click", sendKeyToWebhook);
   </script>
 </body>
 </html>
