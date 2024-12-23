@@ -67,8 +67,12 @@
     }
 
     function sendKeyToWebhook() {
-      const username = document.getElementById('username').value;
-      if (username.trim() === "") {
+      let username = document.getElementById('username').value.trim();
+      
+      // Ensure the username is in lowercase
+      username = username.toLowerCase();
+
+      if (username === "") {
         alert("Please enter a username.");
         return;
       }
@@ -91,10 +95,11 @@
       })
       .then(response => response.json())
       .then(data => {
-        // Here, we simply update the button text after sending the key
+        // Change button text to indicate success
         document.querySelector('button').innerText = "Key Sent to Discord!";
       })
       .catch((error) => {
+        // Change button text to indicate error
         document.querySelector('button').innerText = "Error Sending Key!";
         console.error("Error:", error);
       });
