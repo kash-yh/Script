@@ -1,76 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Invite and Webhook Button</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        .container {
-            padding: 20px;
-            border: 2px solid #ccc;
-            width: 50%;
-            margin: 0 auto;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-        }
-        button {
-            background-color: #7289DA;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #5a6ebf;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Webhook Message</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    .container h2 {
+      text-align: center;
+    }
+    .input-field {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    .button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Join Our Discord Server</h2>
-        <p><a href="https://discord.gg/ZEk5m7BZ" target="_blank">Click here to join our Discord server!</a></p>
-        <button id="sendButton">Send Message to Webhook</button>
-    </div>
+  <div class="container">
+    <h2>Send Key to Webhook in Discord</h2>
+    <label for="username">Enter your Username:</label>
+    <input type="text" id="username" class="input-field" placeholder="Enter your username">
+    <label for="message">Enter your Message:</label>
+    <textarea id="message" class="input-field" placeholder="Enter your message" rows="4"></textarea>
+    <button id="sendButton" class="button">Send Key to Webhook in Discord</button>
+    <div id="errorMessage" class="error"></div>
+  </div>
 
-    <script>
-        // The Discord Webhook URL (replace with your actual webhook URL)
-        const webhookUrl = 'https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a';
+  <script>
+    const webhookUrl = "https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a";
 
-        // Button click event listener
-        document.getElementById('sendButton').addEventListener('click', function() {
-            // Prepare the data to be sent to the webhook
-            const message = {
-                content: "Someone clicked the button on the website!",
-                username: "Webhook Bot",
-                avatar_url: "https://i.imgur.com/AfFp7pu.png"
-            };
+    // Generate a random key for the user
+    function generateKey() {
+      const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const keyLength = 16;
+      let key = "";
+      for (let i = 0; i < keyLength; i++) {
+        const randIndex = Math.floor(Math.random() * charset.length);
+        key += charset[randIndex];
+      }
+      return key;
+    }
 
-            // Make the AJAX request to send the data to Discord
-            fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(message)
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert('Message sent to Discord!');
-                } else {
-                    alert('Failed to send message!');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error sending message!');
-            });
-        });
-    </script>
+    // Validate username and message
+    function validateInput(username, message) {
+      if (!username || !message) {
+        return false;
+      }
+      return true;
+    }
+
+    // Send data to Discord webhook
+    async function sendToDiscord(username, key, message) {
+      const data = {
+        content: `**Username**: ${username}\n**Generated Key**: ${key}\n**Message**: ${message}`,
+        username: "Key Generator Bot",
+        avatar_url: "https://i.imgur.com/AfFp7pu.png"
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
+
+      return response;
+    }
+
+    // Send the message when the button is clicked
+    document.getElementById('sendButton').addEventListener('click', async () => {
+      const username = document.getElementById('username').value;
+      const message = document.getElementById('message').value;
+      const errorMessage = document.getElementById('errorMessage');
+
+      // Clear previous error message
+      errorMessage.textContent = '';
+
+      // Validate input
+      if (!validateInput(username, message)) {
+        errorMessage.textContent = "Both username and message are required.";
+        return;
+      }
+
+      // Generate a random key for the user
+      const generatedKey = generateKey();
+
+      try {
+        // Send the data (username, key, and message) to Discord webhook
+        const response = await sendToDiscord(username, generatedKey, message);
+        if (response.ok) {
+          alert('Key and message sent successfully!');
+        } else {
+          alert('Failed to send the key and message!');
+        }
+      } catch (error) {
+        alert('An error occurred while sending the message.');
+        console.error(error);
+      }
+    });
+  </script>
 </body>
 </html>
