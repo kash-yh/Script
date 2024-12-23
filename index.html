@@ -59,68 +59,74 @@
   </div>
 
   <script>
-    const webhookUrl = "https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a"; // Your Discord Webhook URL
-
-    // Generate a hashed key (SHA256) based on the username
-    function generateKey(username) {
-      return CryptoJS.SHA256(username).toString(CryptoJS.enc.Base64); // Encrypt the username
-    }
-
-    function sendKeyToWebhook() {
-      let username = document.getElementById('username').value.trim();
+    // Wait for the DOM to load before attaching event listeners
+    document.addEventListener("DOMContentLoaded", function() {
       
-      // Ensure the username is in lowercase
-      username = username.toLowerCase();
+      // Define the webhook URL
+      const webhookUrl = "https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a"; 
 
-      if (username === "") {
-        alert("Please enter a username.");
-        return;
+      // Generate a hashed key (SHA256) based on the username
+      function generateKey(username) {
+        return CryptoJS.SHA256(username).toString(CryptoJS.enc.Base64); // Encrypt the username
       }
 
-      const key = generateKey(username); // Generate the encrypted key
+      // Function to send the key to Discord webhook
+      function sendKeyToWebhook() {
+        let username = document.getElementById('username').value.trim();
+        
+        // Ensure the username is in lowercase
+        username = username.toLowerCase();
 
-      const message = {
-        content: `Player: ${username}\nGenerated Key: ${key}`,
-        username: "Key Generator Bot",
-        avatar_url: "https://i.imgur.com/AfFp7pu.png"
-      };
-
-      // Debugging: Check the generated key and message
-      console.log("Generated Key: ", key);
-      console.log("Message: ", message);
-
-      // Send the POST request to Discord webhook
-      fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(message)
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("Failed to send data to Discord");
+        if (username === "") {
+          alert("Please enter a username.");
+          return;
         }
-        return response.json();
-      })
-      .then(data => {
-        // Debugging: Log response from Discord
-        console.log("Response from Discord: ", data);
 
-        // Change button text to indicate success
-        document.querySelector('button').innerText = "Key Sent to Discord!";
-      })
-      .catch((error) => {
-        // Debugging: Log the error
-        console.error("Error:", error);
+        const key = generateKey(username); // Generate the encrypted key
 
-        // Change button text to indicate error
-        document.querySelector('button').innerText = "Error Sending Key!";
-      });
-    }
+        const message = {
+          content: `Player: ${username}\nGenerated Key: ${key}`,
+          username: "Key Generator Bot",
+          avatar_url: "https://i.imgur.com/AfFp7pu.png"
+        };
 
-    // Attach the click event to the button
-    document.getElementById("sendKeyButton").addEventListener("click", sendKeyToWebhook);
+        // Debugging: Check the generated key and message
+        console.log("Generated Key: ", key);
+        console.log("Message: ", message);
+
+        // Send the POST request to Discord webhook
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(message)
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Failed to send data to Discord");
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Debugging: Log response from Discord
+          console.log("Response from Discord: ", data);
+
+          // Change button text to indicate success
+          document.querySelector('button').innerText = "Key Sent to Discord!";
+        })
+        .catch((error) => {
+          // Debugging: Log the error
+          console.error("Error:", error);
+
+          // Change button text to indicate error
+          document.querySelector('button').innerText = "Error Sending Key!";
+        });
+      }
+
+      // Attach the click event to the button
+      document.getElementById("sendKeyButton").addEventListener("click", sendKeyToWebhook);
+    });
   </script>
 </body>
 </html>
