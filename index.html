@@ -58,10 +58,21 @@
     <button id="sendKeyButton" class="button">Send Key to Webhook</button>
   </div>
 
+  <!-- Move the script tag to the bottom, right before closing body tag -->
   <script>
-    // Wait for the DOM to load before attaching event listeners
+    // Wait for the DOM to fully load before accessing elements
     document.addEventListener("DOMContentLoaded", function() {
       
+      // Get DOM elements for the button and username input
+      const sendKeyButton = document.getElementById('sendKeyButton');
+      const usernameInput = document.getElementById('username');
+      
+      // Check if the elements exist to prevent accessing undefined
+      if (!sendKeyButton || !usernameInput) {
+        console.error("HTML elements not found. Ensure your IDs are correct.");
+        return;
+      }
+
       // Define the webhook URL
       const webhookUrl = "https://discord.com/api/webhooks/1320336477678207041/d7uhGZxGtFOaop_tN0aMtFNxA_rkarV4HiHqgW9DuHiqyuWa44swQbGkeMwbf2dFvz9a"; 
 
@@ -72,7 +83,7 @@
 
       // Function to send the key to Discord webhook
       function sendKeyToWebhook() {
-        let username = document.getElementById('username').value.trim();
+        let username = usernameInput.value.trim();
         
         // Ensure the username is in lowercase
         username = username.toLowerCase();
@@ -113,19 +124,19 @@
           console.log("Response from Discord: ", data);
 
           // Change button text to indicate success
-          document.querySelector('button').innerText = "Key Sent to Discord!";
+          sendKeyButton.innerText = "Key Sent to Discord!";
         })
         .catch((error) => {
           // Debugging: Log the error
           console.error("Error:", error);
 
           // Change button text to indicate error
-          document.querySelector('button').innerText = "Error Sending Key!";
+          sendKeyButton.innerText = "Error Sending Key!";
         });
       }
 
       // Attach the click event to the button
-      document.getElementById("sendKeyButton").addEventListener("click", sendKeyToWebhook);
+      sendKeyButton.addEventListener("click", sendKeyToWebhook);
     });
   </script>
 </body>
