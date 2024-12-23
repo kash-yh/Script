@@ -46,6 +46,12 @@
     .button:hover {
       background-color: #45a049;
     }
+    .link-button {
+      background-color: #007bff;
+    }
+    .link-button:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -55,6 +61,9 @@
     <input type="text" id="username" class="input-field" placeholder="Enter Username" required>
 
     <button id="sendKeyButton" class="button">Send Key to Webhook</button>
+    
+    <!-- New Button to Open Discord Link -->
+    <button id="openDiscordButton" class="button link-button">Join Our Discord</button>
   </div>
 
   <script>
@@ -91,7 +100,7 @@
       // Encrypt the username
       const encryptedKey = encryptUsername(username);
       const message = {
-        content: Player: ${username}\nEncrypted Key: ${encryptedKey},
+        content: `Player: ${username}\nEncrypted Key: ${encryptedKey}`,
         username: "Key Generator Bot",
         avatar_url: "https://i.imgur.com/AfFp7pu.png"
       };
@@ -113,6 +122,11 @@
         console.error("Error sending key:", error);
         document.getElementById('sendKeyButton').innerText = "Error Sending Key!";
       });
+    });
+
+    // Open the Discord link in a new tab when the new button is clicked
+    document.getElementById('openDiscordButton').addEventListener("click", function() {
+      window.open("https://discord.gg/paWHA2gc56", "_blank");
     });
   </script>
 </body>
