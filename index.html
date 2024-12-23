@@ -55,8 +55,6 @@
     <input type="text" id="username" class="input-field" placeholder="Enter Username" required>
 
     <button id="sendKeyButton" class="button">Send Key to Webhook</button>
-
-    <button id="joinDiscordButton" class="button">Join Discord for Key</button>
   </div>
 
   <script>
@@ -106,22 +104,15 @@
         },
         body: JSON.stringify(message)
       })
-      .then(response => {
-        if (response.ok) {
-          alert("Key sent to Discord!");
-        } else {
-          alert("Error sending key to Discord.");
-        }
+      .then(response => response.json())
+      .then(data => {
+        console.log("Key sent to Discord:", data);
+        document.getElementById('sendKeyButton').innerText = "Key Sent to Discord!";
       })
       .catch(error => {
-        console.error('Error:', error);
-        alert("Error sending key to Discord.");
+        console.error("Error sending key:", error);
+        document.getElementById('sendKeyButton').innerText = "Error Sending Key!";
       });
-    });
-
-    // Open Discord link when button is clicked
-    document.getElementById('joinDiscordButton').addEventListener('click', () => {
-      window.location.href = 'https://discord.gg/paWHA2gc56';
     });
   </script>
 </body>
