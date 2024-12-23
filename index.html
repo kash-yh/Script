@@ -91,10 +91,11 @@
       })
       .then(response => response.json())
       .then(data => {
-        alert("Key sent to Discord successfully!");
+        // Here, we simply update the button text after sending the key
+        document.querySelector('button').innerText = "Key Sent to Discord!";
       })
       .catch((error) => {
-        alert("Error sending key to Discord!");
+        document.querySelector('button').innerText = "Error Sending Key!";
         console.error("Error:", error);
       });
     }
